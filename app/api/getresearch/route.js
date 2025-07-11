@@ -1,8 +1,9 @@
 import OpenAI from "openai";
 import nodemailer from "nodemailer"; // Import nodemailer
 
+const NEXT_PUBLIC_OPENAI_API_KEY="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"
 const client = new OpenAI({
-    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true // Use environment variable for OpenAI API key
+    apiKey: NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true // Use environment variable for OpenAI API key
 });
 
 const transporter = nodemailer.createTransport({
