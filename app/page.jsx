@@ -1,49 +1,101 @@
 "use client"
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import OpenAI from 'openai'; // Import OpenAI client for LLM calls
+import { z } from "zod";
+import { zodTextFormat } from "openai/helpers/zod";
+
+// Define the Zod schema for the structured output
+const IndustryNames = z.object({
+    commonNames: z.array(z.string()),
+});
 
 // Main App component for the Deep Research API frontend
+
 const App = () => {
     // State variables to manage form inputs and application data
-    const [query, setQuery] = useState(''); // Stores the user's research query (original)
+    // Removed 'query' state as the direct input field is being removed.
+    const [selectedModelCompany, setSelectedModelCompany] = useState('ChatGPT'); // New state for selected model company
+    const [availableModels, setAvailableModels] = useState([]); // New state for dynamically available models
     const [selectedModels, setSelectedModels] = useState([]); // Stores selected research models
     const [recipientEmail, setRecipientEmail] = useState(''); // Stores the recipient email
+    const [Industry_Name, setIndustry_Name] = useState('');
     const [promptRewritingEnabled, setPromptRewritingEnabled] = useState(false); // Controls prompt rewriting feature
+    const [clarifyingQuestionsEnabled, setClarifyingQuestionsEnabled] = useState(false); // New state for clarifying questions feature
+    const [industryName, setIndustryName] = useState([]); // State for industry name
+    const [industryAnalysis, setIndustryAnalysis] = useState(null); // State for industry analysis result
+
     const [rewrittenPrompt, setRewrittenPrompt] = useState(''); // Stores the prompt rewritten by the model
     const [showPromptConfirmation, setShowPromptConfirmation] = useState(false); // Controls visibility of prompt confirmation UI
-    const [finalPromptForResearch, setFinalPromptForResearch] = useState(''); // The prompt (original or rewritten) sent to backend
+    const [finalPromptForResearch, setFinalPromptForResearch] = useState(''); // The prompt (rewritten) sent to backend
     const [researchAnalysis, setResearchAnalysis] = useState(null); // Stores the research analysis result
     const [citations, setCitations] = useState([]); // Stores the citations
     const [isLoading, setIsLoading] = useState(false); // Indicates if an API call is in progress
     const [message, setMessage] = useState(''); // Displays user feedback messages (success/error)
+    const [reasoning, setReasoning] = useState([]); // Stores reasoning output if available
+    const [webSearchCall, setWebSearchCall] = useState(null); // Stores web search call output if available
 
-    const NEXT_PUBLIC_OPENAI_API_KEY="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"
+    const NEXT_PUBLIC_OPENAI_API_KEY = "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" // Replace with your actual key or environment variable setup
     const openai = new OpenAI({
-        apiKey: NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true // Use environment variable for OpenAI API key
+        apiKey: NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true
     });
-    // Function to handle changes in text input fields (query, email)
+
+    // Define model options based on company
+    const modelOptions = {
+        '': [], // Default empty
+        'ChatGPT': [
+            { value: 'o3-deep-research', label: 'o3-deep-research' },
+            { value: 'o4-mini-deep-research', label: 'o4-mini-deep-research' },
+
+        ],
+        'Gemini': [
+            { value: 'gemini-pro', label: 'Gemini Pro' },
+            { value: 'gemini-flash', label: 'Gemini Flash' },
+        ],
+        'Groq': [
+            { value: 'llama2-70b', label: 'Llama 2 70B' },
+            { value: 'mixtral-8x7b', label: 'Mixtral 8x7B' },
+        ],
+        'Other': [
+            { value: 'custom-model-1', label: 'Custom Model 1' },
+            { value: 'custom-model-2', label: 'Custom Model 2' },
+        ],
+    };
+
+    // Effect to update available models when selectedModelCompany changes
+    useEffect(() => {
+        setAvailableModels(modelOptions[selectedModelCompany] || []);
+        setSelectedModels([]); // Clear selected models when company changes
+    }, [selectedModelCompany]); // Depend on selectedModelCompany
+
+    // Function to handle changes in text input fields (email, industry name)
     const handleChange = (e) => {
         const { name, value } = e.target;
-        if (name === 'query') {
-            setQuery(value);
-        } else if (name === 'recipient_email') {
+        // Removed 'query' handling as the direct input field is removed
+        if (name === 'recipient_email') {
             setRecipientEmail(value);
+        } else if (name === 'industry_name') {
+            setIndustryName(value);
+        } else if (name === 'Industry_Name') {
+            setIndustry_Name(value);
         }
+        // Handle other fields as needed
     };
 
     // Function to handle changes in the multi-select dropdown for models
     const handleSelectChange = (e) => {
-        // Get all selected options from the dropdown
         const options = Array.from(e.target.selectedOptions);
-        // Map them to their values and update the state
         const values = options.map(option => option.value);
         setSelectedModels(values);
     };
 
+    // Function to handle changes in the model company dropdown
+    const handleModelCompanyChange = (e) => {
+        setSelectedModelCompany(e.target.value);
+    };
+
     // Function to handle changes in the prompt rewriting checkbox
-    const handleCheckboxChange = (e) => {
+    const handlePromptRewritingChange = (e) => {
         setPromptRewritingEnabled(e.target.checked);
-        // Reset rewritten prompt and confirmation UI if checkbox is unchecked
         if (!e.target.checked) {
             setRewrittenPrompt('');
             setShowPromptConfirmation(false);
@@ -51,25 +103,29 @@ const App = () => {
         }
     };
 
+    // Function to handle changes in the clarifying questions checkbox
+    const handleClarifyingQuestionsChange = (e) => {
+        setClarifyingQuestionsEnabled(e.target.checked);
+    };
+
     // Function to initiate the research process (either directly or after prompt rewriting)
     const initiateResearch = async (promptToUse) => {
-        setIsLoading(true); // Set loading state to true
-        setMessage('Sending research request to backend...');
+        setIsLoading(true);
+        setMessage('Sending deep research request to backend...');
 
         try {
-            // Simulate an API call to fetch research analysis
-            const response = await fetch('/api/getresearch', { // Replace with your actual Django backend endpoint
+            const response = await fetch('/api/deepresearch', { // Replace with your actual Django backend endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    query: finalPromptForResearch, // Use the confirmed prompt
-                    instruction: promptToUse,
+                    // query: promptToUse, // Use the confirmed prompt
                     models: selectedModels,
                     recipient_email: recipientEmail,
-                    prompt_rewriting: promptRewritingEnabled, // Still send this flag to backend
-
+                    industry_name: Industry_Name, // Include industry name for analysis
+                    // prompt_rewriting: promptRewritingEnabled,
+                    // clarifying_questions: clarifyingQuestionsEnabled, // Send new state to backend
                 }),
             });
 
@@ -78,36 +134,51 @@ const App = () => {
             }
 
             const data = await response.json();
-            setResearchAnalysis(data.analysis); // Set the research analysis result
-            setCitations(data.citations || []); // Set the citations, defaulting to an empty array if none are provided
-            setMessage('Research completed successfully! Analysis sent to your email.'); // Success message
-            setShowPromptConfirmation(false); // Hide confirmation UI after research
-            setRewrittenPrompt(''); // Clear rewritten prompt
+
+            setResearchAnalysis(data.output_text);
+            let reasoning = [];
+            for (const item of data.output) {
+                if (item.type === "reasoning") {
+                    reasoning.push(item.summary.map(s => s.text).join(' '));
+                    break;
+                }
+            }
+            let search = [];
+            for (const item of data.output) {
+                if (item.type === "web_search_call") {
+                    search.push(item.action);
+                    break;
+                }
+            }
+            console.log("Reasoning:", reasoning);
+            console.log("Web Search Call:", search);
+            setReasoning(reasoning);
+            setWebSearchCall(search);
+            setCitations(data.citations || []);
+            setMessage('Deep research completed successfully! Analysis sent to your email.');
+            setShowPromptConfirmation(false);
+            setRewrittenPrompt('');
         } catch (error) {
             console.error('Error during research:', error);
-            setMessage('An error occurred during research. Please try again.');
+            setMessage('An error occurred during deep research. Please try again.');
         } finally {
-            setIsLoading(false); // Reset loading state
+            setIsLoading(false);
         }
     };
 
     // Function to handle the initial form submission
     const handleSubmit = async (e) => {
-        e.preventDefault(); // Prevent default form submission behavior
+        e.preventDefault();
 
-        // Clear previous results and messages
         setResearchAnalysis(null);
         setCitations([]);
         setMessage('');
         setRewrittenPrompt('');
         setShowPromptConfirmation(false);
         setFinalPromptForResearch('');
+        setIndustryAnalysis(null);
 
-        // Basic validation
-        if (!query.trim()) {
-            setMessage('Please enter a research query.');
-            return;
-        }
+        // Validation for models and email remains
         if (selectedModels.length === 0) {
             setMessage('Please select at least one model.');
             return;
@@ -117,171 +188,383 @@ const App = () => {
             return;
         }
 
-        setIsLoading(true); // Set loading state to true
+        setIsLoading(true);
 
-        if (promptRewritingEnabled) {
+        if (!promptRewritingEnabled) {
             setMessage('Rewriting your prompt...');
             try {
-                // Simulate LLM call for prompt rewriting
-                const instructions = ` Rewrite the following research query to make it more specific and detailed, while maintaining its original intent. The rewritten prompt should be suitable for deep research and analysis.
-                `;
+                // The prompt for rewriting now needs to be generic or based on other inputs.
+                // If industryName is available, use it as context. Otherwise, generate a general research prompt.
+                handleConfirmRewrittenPrompt()
 
-                
-
-                const rewriteResult = await openai.responses.create({
-                    instructions,
-                    model: "gpt-4.1",
-                    input: query // Use the original query as input for rewriting
-                });
-
-                console.log(rewriteResult.output_text);
-                // console.log("rewriteResult", rewriteResult)
-                if (rewriteResult && rewriteResult.output_text) {
-                    const newPrompt = rewriteResult.output_text;
-                    setRewrittenPrompt(newPrompt);
-                    setFinalPromptForResearch(query)
-                    setShowPromptConfirmation(true); // Show the confirmation UI
-                    setMessage('Please review the rewritten prompt below.');
-                } else {
-                    setMessage('Failed to rewrite prompt. Proceeding with original query.');
-                    setFinalPromptForResearch(query); // Use original query if rewrite fails
-                    // initiateResearch(query); // Proceed with research using original prompt
-                }
             } catch (error) {
                 console.error('Error during prompt rewriting:', error);
-                setMessage('An error occurred during prompt rewriting. Proceeding with original query.');
-                // setFinalPromptForResearch(query); // Use original query on error
-                // initiateResearch(query); // Proceed with research using original prompt
+                setMessage('An error occurred during prompt rewriting. Please try again.');
+                setFinalPromptForResearch(''); // Clear final prompt on error
             } finally {
-                setIsLoading(false); // Reset loading state after prompt rewriting attempt
+                setIsLoading(false);
             }
         } else {
-            // If prompt rewriting is not enabled, directly initiate research with the original query
-            setFinalPromptForResearch(query);
-            initiateResearch(query);
+            // If prompt rewriting is NOT enabled, and there's no direct query input,
+            // we cannot proceed with research.
+            setMessage('Please enable "Prompt Rewriting" to generate a research query, or provide a query through other means.');
+            setIsLoading(false);
         }
     };
 
+    // Function to handle industry analysis
+    const handleIndustryAnalysis = async () => {
+        setIsLoading(true);
+        setMessage(`Analyzing the ${industryName} industry...`);
+        setIndustryAnalysis(null);
+
+        if (!industryName.trim()) {
+            setMessage('Please enter an industry name for analysis.');
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const industryPrompt = `identify the most commonly accepted names for this ${industryName} industry.`;
+
+
+            const response = await openai.responses.create({
+                input: industryPrompt,
+                model: "gpt-5", // Changed to gpt-4o, often slightly better for detailed responses than latest if there are subtle differences in 'latest' deployment          
+                text: {
+                    format: zodTextFormat(IndustryNames, "commonNames"),
+                }
+            });
+            console.log("Received response:", response);
+
+            if (response && response.output_text) {
+                try {
+                    const parsedData = JSON.parse(response.output_text); // Parse the JSON string
+                    console.log("Parsed Data:", parsedData);
+                    if (parsedData && Array.isArray(parsedData.commonNames)) {
+                        setIndustryAnalysis(parsedData.commonNames); // Set the commonNames array to state
+                        setMessage(`Common names for ${industryName} retrieved.`);
+                    } else {
+                        setMessage(`Invalid response format for ${industryName}. Please try again.`);
+                    }
+                } catch (parseError) {
+                    console.error("Error parsing JSON:", parseError);
+                    setMessage(`Failed to parse response for ${industryName}. Please try again.`);
+                }
+            } else {
+                setMessage(`Failed to get analysis for ${industryName}. Please try again.`);
+            }
+        } catch (error) {
+            console.error('Error during industry analysis:', error);
+            setMessage('An error occurred during industry analysis. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Function to render formatted industry analysis
+    // const renderIndustryAnalysis = (text) => {
+    //     if (!text) return null;
+
+    //     // Attempt to parse the structure based on the example provided
+    //     const parts = text.split('\n\n').filter(p => p.trim() !== '');
+    //     let overview = '';
+    //     let keyAspects = [];
+    //     let commonlyAcceptedNames = [];
+
+    //     // Simple parsing logic (can be made more robust if needed)
+    //     let currentSection = '';
+    //     parts.forEach(part => {
+    //         if (part.includes('Key aspects of the')) {
+    //             overview = part.split('Key aspects of the')[0].trim();
+    //             currentSection = 'keyAspects';
+    //             const aspectsRaw = part.split('Key aspects of the')[1];
+    //             aspectsRaw.split(/\d+\.\s\*\*(.*?)\*\*\s*:\s*(.*)/g).forEach((match, i, arr) => {
+    //                 if (i % 3 === 1) { // Title is at index 1, 4, 7...
+    //                     keyAspects.push({ title: match.trim(), description: arr[i+1].trim() });
+    //                 }
+    //             });
+    //         } else if (part.includes('Commonly accepted names for this industry include:')) {
+    //             currentSection = 'commonlyAcceptedNames';
+    //             const namesRaw = part.split('Commonly accepted names for this industry include:')[1];
+    //             namesRaw.split(/-\s*(.*)/g).forEach((match, i, arr) => {
+    //                 if (i % 2 === 1) { // Name is at index 1, 3, 5...
+    //                     commonlyAcceptedNames.push(match.trim());
+    //                 }
+    //             });
+    //         } else if (currentSection === 'keyAspects' && part.match(/^\d+\.\s\*\*/)) {
+    //             // This case is handled by the regex above, but keeping for clarity if new patterns emerge
+    //         } else if (currentSection === 'commonlyAcceptedNames' && part.match(/^-/)) {
+    //             // This case is handled by the regex above
+    //         } else if (!overview) { // If overview hasn't been set yet
+    //             overview += (overview ? '\n\n' : '') + part;
+    //         }
+    //     });
+
+    //     return (
+    //         <div className="space-y-4">
+    //             {overview && <p className="text-gray-800 leading-relaxed text-base">{overview}</p>}
+
+    //             {keyAspects.length > 0 && (
+    //                 <div>
+    //                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Key Aspects:</h3>
+    //                     <ul className="list-disc pl-6 space-y-2 text-gray-700 text-base">
+    //                         {keyAspects.map((item, index) => (
+    //                             <li key={index}>
+    //                                 <strong>{item.title}</strong>: {item.description}
+    //                             </li>
+    //                         ))}
+    //                     </ul>
+    //                 </div>
+    //             )}
+
+    //             {commonlyAcceptedNames.length > 0 && (
+    //                 <div>
+    //                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Commonly Accepted Names:</h3>
+    //                     <ul className="list-disc pl-6 space-y-2 text-gray-700 text-base">
+    //                         {commonlyAcceptedNames.map((name, index) => (
+    //                             <li key={index}>{name}</li>
+    //                         ))}
+    //                     </ul>
+    //                 </div>
+    //             )}
+    //         </div>
+    //     );
+    // };
+
+
     // Function to handle confirmation of the rewritten prompt
     const handleConfirmRewrittenPrompt = () => {
-        setFinalPromptForResearch(rewrittenPrompt); // Set the rewritten prompt as the final one
-        setShowPromptConfirmation(false); // Hide the confirmation UI
-        initiateResearch(rewrittenPrompt); // Proceed with research using the rewritten prompt
+        // finalPromptForResearch is already set by handleSubmit
+        setShowPromptConfirmation(false);
+        initiateResearch(finalPromptForResearch);
     };
 
     // Function to handle editing the rewritten prompt (if user wants to modify it)
     const handleEditRewrittenPrompt = () => {
-        setShowPromptConfirmation(false); // Hide confirmation UI
-        setQuery(rewrittenPrompt); // Set the rewritten prompt back to the main query input for editing
-        setRewrittenPrompt(''); // Clear rewritten prompt state
-        setMessage('You can now edit the rewritten prompt in the query box.');
+        setShowPromptConfirmation(false);
+        // When editing, set the rewritten prompt back into the main query input for editing
+        // Since there's no longer a direct query input, we set it to the rewrittenPrompt
+        // and expect the user to manually copy/paste or re-trigger prompt rewriting.
+        // For now, we'll just clear the rewritten prompt and message.
+        setRewrittenPrompt('');
+        setMessage('You can re-enable Prompt Rewriting to generate a new prompt.');
     };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 font-inter">
             <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl border border-gray-200">
                 <h1 className="text-4xl font-extrabold text-center text-gray-800 mb-8">
-                    Deep Research
+                    Noah Deep Research
                 </h1>
+
+                {/* Industry Analysis Input */}
+                <div className="mb-6">
+                    <label htmlFor="industry-name" className="block text-lg font-medium text-gray-700 mb-2">
+                        Industry Name for Analysis:
+                    </label>
+                    <div className="flex space-x-3">
+                        <input
+                            type="text"
+                            id="industry-name"
+                            name="industry_name"
+                            className="flex-grow px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-black"
+                            placeholder="e.g., 'Pest Control'"
+                            value={industryName}
+                            onChange={handleChange}
+                        />
+                        <button
+                            type="button"
+                            onClick={handleIndustryAnalysis}
+                            className="py-3 px-6 border border-transparent rounded-lg shadow-md text-lg font-semibold text-white bg-blue-500 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isLoading}
+                        >
+                            {isLoading ? (
+                                <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            ) : (
+                                'Analyze Industry'
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+
+                {/* Display Industry Analysis */}
+
+
 
                 {/* Message display area */}
                 {message && (
-                    <div className={`p-3 mb-4 rounded-lg text-center ${isLoading ? 'bg-blue-100 text-blue-800' : researchAnalysis ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} shadow-sm`}>
+                    <div className={`p-3 mb-4 rounded-lg text-center ${isLoading ? 'bg-blue-100 text-blue-800' : researchAnalysis || industryAnalysis ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} shadow-sm`}>
                         {message}
                     </div>
                 )}
 
-                {!showPromptConfirmation ? (
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Research Query Input */}
-                        <div>
-                            <label htmlFor="query" className="block text-lg font-medium text-gray-700 mb-2">
-                                Enter your research query:
-                            </label>
-                            <textarea
-                                id="query"
-                                name="query"
-                                rows="4"
-                                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base resize-y text-black"
-                                placeholder="e.g., 'Impact of AI on climate change solutions'"
-                                value={query}
-                                onChange={handleChange}
-                                required
-                            ></textarea>
-                        </div>
+                {/* {!showPromptConfirmation ? ( */}
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Research Query Input (single) - REMOVED */}
+                    {/* The research query will now be generated via Prompt Rewriting */}
 
-                        {/* Model Selection */}
+                    {/* Model Company Selection */}
+                    <div>
                         <div>
-                            <label htmlFor="model-select" className="block text-lg font-medium text-gray-700 mb-2">
-                                Choose models:
+                            <label htmlFor="Industry_Name" className="block text-lg font-medium text-gray-700 mb-2">
+                                Industry Name:
                             </label>
                             <select
-                                id="model-select"
-                                name="models"
-                                multiple
-                                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base h-32 text-black"
-                                value={selectedModels}
-                                onChange={handleSelectChange}
-                                required
-                            >
-                                <option value="o3-deep-research">o3-deep-research</option>
-                                <option value="o4-mini-deep-research">o4-mini-deep-research</option>
-
-                            </select>
-                            <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple models.</p>
-                        </div>
-
-                        {/* Recipient Email Input */}
-                        <div>
-                            <label htmlFor="recipient_email" className="block text-lg font-medium text-gray-700 mb-2">
-                                Recipient Email:
-                            </label>
-                            <input
-                                type="email"
-                                id="recipient_email"
-                                name="recipient_email"
-                                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-black"
-                                placeholder="your.email@example.com"
-                                value={recipientEmail}
+                                id="Industry_Name"
+                                name='Industry_Name'
+                                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-black bg-white"
+                                value={Industry_Name}
                                 onChange={handleChange}
                                 required
-                            />
-                        </div>
-
-                        {/* Prompt Rewriting Option */}
-                        <div className="flex items-center">
-                            <input
-                                type="checkbox"
-                                id="prompt-rewriting"
-                                name="prompt-rewriting"
-                                className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                checked={promptRewritingEnabled}
-                                onChange={handleCheckboxChange}
-                            />
-                            <label htmlFor="prompt-rewriting" className="ml-3 block text-lg font-medium text-gray-700">
-                                Enable Prompt Rewriting (optional)
-                            </label>
-                        </div>
-
-                        {/* Research Button */}
-                        <div>
-                            <button
-                                type="submit"
-                                className="w-full flex justify-center py-3 px-6 border border-transparent rounded-lg shadow-md text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={isLoading}
                             >
-                                {isLoading ? (
-                                    <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                ) : (
-                                    'Research'
-                                )}
-                            </button>
+                                <option value="" disabled>Select an industry</option>
+                                {industryAnalysis?.map((name) => (
+                                    <option key={name} value={name}>{name}</option>
+                                ))}
+                            </select>
+                        </div >
+                        <div className="mt-6">
+                            <label htmlFor="model-company-select" className="block text-lg font-medium text-gray-700 mb-2">
+                                Choose Model Company:
+                            </label>
+                            <select
+                                id="model-company-select"
+                                name="model-company"
+                                className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-black"
+                                value={selectedModelCompany}
+                                onChange={handleModelCompanyChange}
+                                required
+                            >
+                                
+                                <option value="ChatGPT">ChatGPT</option>
+                                <option value="Gemini">Gemini</option>
+                                <option value="Groq">Groq</option>
+                                <option value="Other">Other</option>
+                            </select>
+
                         </div>
-                    </form>
-                ) : (
+                    </div>
+
+                    {/* Model Selection (dynamic based on company) */}
+                    <div>
+                        <label htmlFor="model-select" className="block text-lg font-medium text-gray-700 mb-2">
+                            Choose models:
+                        </label>
+                        <select
+                            id="model-select"
+                            name="models"
+                            multiple
+                            className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base h-32 text-black"
+                            value={selectedModels}
+                            onChange={handleSelectChange}
+                            required={availableModels.length > 0} // Require selection only if options are available
+                            disabled={availableModels.length === 0} // Disable if no options
+                        >
+                            {availableModels.length === 0 && <option value="">Select a model company first</option>}
+                            {availableModels.map(model => (
+                                <option key={model.value} value={model.value}>{model.label}</option>
+                            ))}
+                        </select>
+                        <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple models.</p>
+                    </div>
+
+                     {/* Audio Summary Model Selection (New) */}
+                     {/* <div>
+                        <label htmlFor="audio-model-select" className="block text-lg font-medium text-gray-700 mb-2">
+                            Choose models for Audio Summary:
+                        </label>
+                        <select
+                            id="audio-model-select"
+                            name="audio-models"
+                            multiple
+                            className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base h-32 text-black"
+                            value={selectedAudioModels}
+                            onChange={handleAudioModelChange}
+                        >
+                            {Object.entries(modelOptions).flatMap(([company, models]) => 
+                                models.length > 0 ? (
+                                    <optgroup label={company} key={company}>
+                                        {models.map(model => (
+                                            <option key={model.value} value={model.value}>{model.label}</option>
+                                        ))}
+                                    </optgroup>
+                                ) : null
+                            )}
+                        </select>
+                        <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple models.</p>
+                    </div> */}
+
+                    {/* Recipient Email Input */}
+                    <div>
+                        <label htmlFor="recipient_email" className="block text-lg font-medium text-gray-700 mb-2">
+                            Recipient Email:
+                        </label>
+                        <input
+                            type="email"
+                            id="recipient_email"
+                            name="recipient_email"
+                            className="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-black"
+                            placeholder="your.email@example.com"
+                            value={recipientEmail}
+                            onChange={handleChange}
+                            required
+                        />
+                    </div>
+
+                    {/* Prompt Rewriting Option */}
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="prompt-rewriting"
+                            name="prompt-rewriting"
+                            className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            checked={promptRewritingEnabled}
+                            onChange={handlePromptRewritingChange}
+                        />
+                        <label htmlFor="prompt-rewriting" className="ml-3 block text-lg font-medium text-gray-700">
+                            Enable Prompt Rewriting
+                        </label>
+                    </div>
+
+                    {/* Asking Clarifying Questions Option */}
+                    <div className="flex items-center">
+                        <input
+                            type="checkbox"
+                            id="clarifying-questions"
+                            name="clarifying-questions"
+                            className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            checked={clarifyingQuestionsEnabled}
+                            onChange={handleClarifyingQuestionsChange}
+                        />
+                        <label htmlFor="clarifying-questions" className="ml-3 block text-lg font-medium text-gray-700">
+                            Asking Clarifying Questions
+                        </label>
+                    </div>
+
+                    {/* Research Button */}
+                    <div>
+                        <button
+                            type="submit"
+                            className="w-full flex justify-center py-3 px-6 border border-transparent rounded-lg shadow-md text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isLoading} // Disable if rewriting not enabled
+                        >
+                            {isLoading ? (
+                                <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            ) : (
+                                'Start Research' // Clarified button text
+                            )}
+                        </button>
+                    </div>
+                </form>
+                {/* ) : (
                     // Prompt Confirmation UI
                     <div className="space-y-6">
                         <h2 className="text-2xl font-bold text-gray-800 mb-4">Rewritten Prompt</h2>
@@ -304,11 +587,11 @@ const App = () => {
                                 className="flex-1 py-3 px-6 border border-gray-300 rounded-lg shadow-md text-lg font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={isLoading}
                             >
-                                Edit Original Prompt
+                                Clear Rewritten Prompt
                             </button>
                         </div>
                     </div>
-                )}
+                )} */}
 
                 {/* Display Research Analysis and Citations */}
                 {researchAnalysis && (
@@ -320,10 +603,26 @@ const App = () => {
 
                         {citations.length > 0 && (
                             <div className="mt-8">
-                                <h3 className="text-2xl font-semibold text-gray-800 mb-3">Citations</h3>
+                                {/* Citations display area - currently commented out in your original code */}
+                            </div>
+                        )}
+
+                        {reasoning.length > 0 && (
+                            <div className="mt-8">
+                                <h3 className="text-2xl font-semibold text-gray-800 mb-3">Reasoning</h3>
                                 <ul className="list-disc pl-6 space-y-2 text-gray-700 text-base">
-                                    {citations.map((citation, index) => (
-                                        <li key={index}>{citation}</li>
+                                    {reasoning.map((item, index) => (
+                                        <li key={index}>{item}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        {webSearchCall.length > 0 && (
+                            <div className="mt-8">
+                                <h3 className="text-2xl font-semibold text-gray-800 mb-3">Web Search Calls</h3>
+                                <ul className="list-disc pl-6 space-y-2 text-gray-700 text-base">
+                                    {webSearchCall.map((item, index) => (
+                                        <li key={index}>{JSON.stringify(item)}</li>
                                     ))}
                                 </ul>
                             </div>
