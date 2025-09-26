@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@sparticuz/chromium": "^138.0.2",
+    "@upstash/qstash": "^2.8.3",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
     "googleapis": "^154.0.0",

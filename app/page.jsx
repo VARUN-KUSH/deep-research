@@ -133,31 +133,31 @@ const App = () => {
                 throw new Error('Failed to fetch research analysis');
             }
 
-            const data = await response.json();
+            // const data = await response.json();
 
-            setResearchAnalysis(data.output_text);
-            let reasoning = [];
-            for (const item of data.output) {
-                if (item.type === "reasoning") {
-                    reasoning.push(item.summary.map(s => s.text).join(' '));
-                    break;
-                }
-            }
-            let search = [];
-            for (const item of data.output) {
-                if (item.type === "web_search_call") {
-                    search.push(item.action);
-                    break;
-                }
-            }
-            console.log("Reasoning:", reasoning);
-            console.log("Web Search Call:", search);
-            setReasoning(reasoning);
-            setWebSearchCall(search);
-            setCitations(data.citations || []);
-            setMessage('Deep research completed successfully! Analysis sent to your email.');
-            setShowPromptConfirmation(false);
-            setRewrittenPrompt('');
+            // setResearchAnalysis(data.output_text);
+            // let reasoning = [];
+            // for (const item of data.output) {
+            //     if (item.type === "reasoning") {
+            //         reasoning.push(item.summary.map(s => s.text).join(' '));
+            //         break;
+            //     }
+            // }
+            // let search = [];
+            // for (const item of data.output) {
+            //     if (item.type === "web_search_call") {
+            //         search.push(item.action);
+            //         break;
+            //     }
+            // }
+            // console.log("Reasoning:", reasoning);
+            // console.log("Web Search Call:", search);
+            // setReasoning(reasoning);
+            // setWebSearchCall(search);
+            // setCitations(data.citations || []);
+            // setMessage('Deep research completed successfully! Analysis sent to your email.');
+            // setShowPromptConfirmation(false);
+            // setRewrittenPrompt('');
         } catch (error) {
             console.error('Error during research:', error);
             setMessage('An error occurred during deep research. Please try again.');
@@ -176,7 +176,7 @@ const App = () => {
         setRewrittenPrompt('');
         setShowPromptConfirmation(false);
         setFinalPromptForResearch('');
-        setIndustryAnalysis(null);
+        // setIndustryAnalysis(null);
 
         // Validation for models and email remains
         if (selectedModels.length === 0) {
