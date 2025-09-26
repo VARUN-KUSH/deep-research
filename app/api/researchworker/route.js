@@ -3,13 +3,15 @@ import OpenAI from "openai";
 import nodemailer from 'nodemailer';
 import { marked } from 'marked'; // The Markdown parser
 // import fs from 'fs/promises';
+import { NextResponse } from 'next/server';
 import { createReadStream } from 'node:fs';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';  // Import promise-based versions
 import path from 'node:path';
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
-import { Client } from "@upstash/qstash";
-import { verifySignature } from "@upstash/qstash/nextjs";
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs"
+// <-- IMPORTANT: Import Receiver for App Router
+
 // import path from 'path';
 import { getContext, instruction2, instruction3, instruction4, getSourcesListInstruction, MarketReportSummaryInstruction } from "@/utils/context"; // Import the context generation function
 import { EkgReportInstruction1, EkgReportInstruction2, GetSourceListForEkgInstruction, CreateAudioSummaryInstruction } from "../../../utils/context";
@@ -19,6 +21,7 @@ const NEXT_PUBLIC_OPENAI_API_KEY = "sk-proj-mRpoibh1aYuN75U0uOw-xOasMxXzlU6hmdtL
 const client = new OpenAI({
     apiKey: NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true // Use environment variable for OpenAI API key
 });
+
 
 
 // Helper function to generate PDF from HTML file
@@ -139,8 +142,7 @@ async function getCoversationResponse(config) {
     }
 
 }
-
-async function researchWorker(req, res) {
+async function handler(request) {
     try {
         //   const response = await request.json()
         //   const recipientEmail = response.recipient_email;
@@ -148,9 +150,13 @@ async function researchWorker(req, res) {
         //   let industryName = response.industry_name || "Vehicle Service Contract (VSC)"; // Default to VSC if not provided
         //   console.log("Industry Name:", industryName);
         // Generate context based on the industry name
-        const { recipient_email, industryName, models } = req.body;
-        console.log(`WORKER STARTED: Processing job for ${recipient_email} on industry ${industry_name}`);
+        // Verify the signature from QStash and parse the body
+        const body = await request.json()
 
+        const { recipient_email, industry_name, models } = body;
+        let industryName = industry_name; // Use a consistent variable name
+        console.log(`WORKER STARTED: Processing job for ${recipient_email} on industry ${industryName}`);
+        
         const instruction1 = getContext(industryName);
         //   const models = response.models
         let markdownPart1, markdownPart2, markdownPart3, markdownPart4, markdowntop, markdownoflist, industryReportPdfBuffer, ekgReportPdfBuffer;
@@ -445,26 +451,20 @@ async function researchWorker(req, res) {
         }
 
 
-        console.log(`✅ WORKER FINISHED: Successfully generated and sent report for ${recipient_email}`);
-        // ===================================================================
-        
-        // When the job is done, send a 200 OK response to QStash
-        res.status(200).send("Job processed successfully.");
-    
-      } catch (error) {
+        // --- End of your main logic ---
+
+        console.log(`✅ WORKER FINISHED: Successfully processed job for ${recipient_email}`);
+        return new NextResponse("Job processed successfully.", { status: 200 });
+
+    } catch (error) {
         console.error("❌ WORKER FAILED:", error);
-        // If the job fails, send an error response so QStash can potentially retry it.
-        res.status(500).send("Job processing failed.");
-      }
+        if (error.message.includes("invalid signature")) {
+            return new NextResponse("Invalid signature.", { status: 401 });
+        }
+        return new NextResponse("Job processing failed.", { status: 500 });
+    }
 
 }
 
-// to ensure only QStash can trigger it.
-export default verifySignature(researchWorker);
-
-// You MUST disable the body parser for verifySignature to work
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// THE FIX: Your handler is now wrapped with the verification function and exported as POST
+export const POST = verifySignatureAppRouter(handler);
