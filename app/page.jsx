@@ -34,7 +34,7 @@ const App = () => {
     const [reasoning, setReasoning] = useState([]); // Stores reasoning output if available
     const [webSearchCall, setWebSearchCall] = useState(null); // Stores web search call output if available
 
-    const NEXT_PUBLIC_OPENAI_API_KEY = "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" // Replace with your actual key or environment variable setup
+    const NEXT_PUBLIC_OPENAI_API_KEY = "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" // Replace with your actual key or environment variable setup
     const openai = new OpenAI({
         apiKey: NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true
     });

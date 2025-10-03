@@ -152,7 +152,7 @@ async function handler(request) {
         // Generate context based on the industry name
         // Verify the signature from QStash and parse the body
         const body = await request.json()
-
+        console.log("Received request body:", body);
         const { recipient_email, industry_name, models } = body;
         let industryName = industry_name; // Use a consistent variable name
         console.log(`WORKER STARTED: Processing job for ${recipient_email} on industry ${industryName}`);
@@ -194,7 +194,7 @@ async function handler(request) {
 
         try {
             let resp = await client.responses.create({
-                model: response.models[0],
+                model: models[0],
                 input: [
                     {
                         "role": "user",
@@ -421,7 +421,7 @@ async function handler(request) {
             try {
                 await transporter.sendMail({
                     from: 'shiva92637@gmail.com', // Your sender email address (must match transporter.auth.user)
-                    to: recipientEmail, // The recipient email from the request
+                    to: recipient_email, // The recipient email from the request
                     subject: "Your Industry & EKG Reports for ${industryName}",
                     html: `<p>Hello,</p><p>Please find your requested reports attached.</p><p>Regards,<br/>Your API Service</p>`,
                     text: `Hello,\n\nPlease find your requested reports attached.\n\nRegards,\nYour API Service`,
@@ -438,7 +438,7 @@ async function handler(request) {
                         }
                     ]
                 });
-                console.log(`Email sent successfully to ${recipientEmail}`);
+                console.log(`Email sent successfully to ${recipient_email}`);
             } catch (emailError) {
                 console.error("Error sending email:", emailError);
                 if (emailError.code === 'EENVELOPE' || emailError.responseCode === 535) {

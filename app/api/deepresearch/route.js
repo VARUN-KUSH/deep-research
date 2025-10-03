@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server';
 import { getContext, instruction2, instruction3, instruction4, getSourcesListInstruction, MarketReportSummaryInstruction } from "@/utils/context"; // Import the context generation function
 import { EkgReportInstruction1, EkgReportInstruction2, GetSourceListForEkgInstruction, CreateAudioSummaryInstruction } from "../../../utils/context";
 
-const NEXT_PUBLIC_OPENAI_API_KEY = "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"
+const NEXT_PUBLIC_OPENAI_API_KEY = "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"
 // "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"
 const client = new OpenAI({
   apiKey: NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true // Use environment variable for OpenAI API key
@@ -50,7 +50,7 @@ export async function POST(request) {
       : 'http://localhost:3000';
       
     // 2. Publish the job to QStash
-    await qstashClient.publishJSON({
+    const result = await qstashClient.publishJSON({
       url: `https://deep-research-six-bay.vercel.app/api/researchworker`, 
       body: {
         recipient_email,
@@ -59,7 +59,7 @@ export async function POST(request) {
       },
     });
 
-    console.log("Job successfully queued for:", recipient_email);
+    console.log("Job successfully queued for:", result.messageId);
 
     // 3. Immediately respond to the frontend using NextResponse
     return NextResponse.json(
