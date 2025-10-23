@@ -30,11 +30,12 @@ const App = () => {
     const [researchAnalysis, setResearchAnalysis] = useState(null); // Stores the research analysis result
     const [citations, setCitations] = useState([]); // Stores the citations
     const [isLoading, setIsLoading] = useState(false); // Indicates if an API call is in progress
+    const [isLoadingResearch, setIsLoadingResearch] = useState(false);
     const [message, setMessage] = useState(''); // Displays user feedback messages (success/error)
     const [reasoning, setReasoning] = useState([]); // Stores reasoning output if available
     const [webSearchCall, setWebSearchCall] = useState(null); // Stores web search call output if available
 
-    const NEXT_PUBLIC_OPENAI_API_KEY = "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" // Replace with your actual key or environment variable setup
+    const NEXT_PUBLIC_OPENAI_API_KEY = "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" // Replace with your actual key or environment variable setup
     const openai = new OpenAI({
         apiKey: NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true
     });
@@ -110,11 +111,11 @@ const App = () => {
 
     // Function to initiate the research process (either directly or after prompt rewriting)
     const initiateResearch = async (promptToUse) => {
-        setIsLoading(true);
+        setIsLoadingResearch(true);
         setMessage('Sending deep research request to backend...');
 
         try {
-            const response = await fetch('/api/deepresearch', { // Replace with your actual Django backend endpoint
+            const response = await fetch(' https://10092bdb255b.ngrok-free.app/api/generate-report', { // Replace with your actual Django backend endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -129,12 +130,19 @@ const App = () => {
                 }),
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch research analysis');
+            if (response.status !== 202) {
+                // Use the message from the JSON data for the error
+                throw new Error(`Failed to fetch research analysis.`);
             }
 
-            // const data = await response.json();
+            let res = await response.json();
+            console.log("Full response from backend>>>", res);
+            //    Check the status on the 'response' object
+           
 
+            // This part is now correct
+            console.log("response from backend>>>", res.message);
+            setMessage(res.message);
             // setResearchAnalysis(data.output_text);
             // let reasoning = [];
             // for (const item of data.output) {
@@ -162,7 +170,7 @@ const App = () => {
             console.error('Error during research:', error);
             setMessage('An error occurred during deep research. Please try again.');
         } finally {
-            setIsLoading(false);
+            setIsLoadingResearch(false);
         }
     };
 
@@ -551,9 +559,9 @@ const App = () => {
                         <button
                             type="submit"
                             className="w-full flex justify-center py-3 px-6 border border-transparent rounded-lg shadow-md text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={isLoading} // Disable if rewriting not enabled
+                            disabled={isLoadingResearch} // Disable if rewriting not enabled
                         >
-                            {isLoading ? (
+                            {isLoadingResearch ? (
                                 <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

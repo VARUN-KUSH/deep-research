@@ -9,8 +9,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';  // Import promis
 import path from 'node:path';
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
-import { verifySignatureAppRouter } from "@upstash/qstash/nextjs"
-// <-- IMPORTANT: Import Receiver for App Router
+
 
 // import path from 'path';
 import { getContext, instruction2, instruction3, instruction4, getSourcesListInstruction, MarketReportSummaryInstruction } from "@/utils/context"; // Import the context generation function
