@@ -142,7 +142,7 @@
 
 // }
 
-// export async function POST(request) {
+export async function POST(request) {}
 //   try {
 //         const response = await request.json()
 //       // Generate context based on the industry name

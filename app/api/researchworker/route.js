@@ -91,6 +91,8 @@
 //     }
 // });
 
+export async function POST(request) {}
+
 // async function getApiResponse(config, retries = 3) {
 //     // Loop for the specified number of retry attempts
 //     for (let attempt = 1; attempt <= retries; attempt++) {
