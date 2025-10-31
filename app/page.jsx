@@ -685,14 +685,11 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import OpenAI from 'openai'; // Import OpenAI client for LLM calls
-import { z } from "zod";
-import { zodTextFormat } from "openai/helpers/zod";
+
 /* import Image from 'next/image' // Removed Next.js Image component as it caused a build error. Replaced with standard <img> tag. */
 
 // Define the Zod schema for the structured output
-const IndustryNames = z.object({
-    commonNames: z.array(z.string()),
-});
+
 
 // --- Modal Component ---
 // This is the popup that will show the advanced settings
@@ -751,11 +748,7 @@ const App = () => {
     // --- NEW STATE for settings modal ---
     const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
 
-    // const NEXT_PUBLIC_OPENAI_API_KEY = "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" // Replace with your actual key or environment variable setup
-    const openai = new OpenAI({
-        apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY, dangerouslyAllowBrowser: true
-    });
-
+   
     // Define model options based on company
     const modelOptions = {
         '': [], // Default empty
@@ -826,12 +819,12 @@ const App = () => {
                     <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple models.</p>
                 </div>
 
-                 {/* Audio Summary Model Selection (New) */} 
-                 <div>
-                  <label htmlFor="audio-model-select" className="block text-lg font-medium text-gray-700 mb-2">
-                      Choose models for Audio Summary:
-                  </label>
-                  {/* <select
+                {/* Audio Summary Model Selection (New) */}
+                <div>
+                    <label htmlFor="audio-model-select" className="block text-lg font-medium text-gray-700 mb-2">
+                        Choose models for Audio Summary:
+                    </label>
+                    {/* <select
                       id="audio-model-select"
                       name="audio-models"
                       multiple
@@ -849,8 +842,8 @@ const App = () => {
                           ) : null
                       )}
                   </select> */}
-                  <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple models.</p>
-              </div>
+                    <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple models.</p>
+                </div>
 
                 {/* Prompt Rewriting Option */}
                 <div className="flex items-center pt-4">
@@ -1079,15 +1072,25 @@ const App = () => {
         try {
             const industryPrompt = `identify the most commonly accepted names for this ${industryName} industry.`;
 
+            let response = await fetch('/api/getname', { // Replace with your actual Django backend endpoint
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
 
-            const response = await openai.responses.create({
-                input: industryPrompt,
-                model: "gpt-5", // Changed to gpt-4o, often slightly better for detailed responses than latest if there are subtle differences in 'latest' deployment          
-                text: {
-                    format: zodTextFormat(IndustryNames, "commonNames"),
-                }
+                    industryPrompt: industryPrompt
+                }),
             });
-            console.log("Received response:", response);
+
+            if (response.status !== 200) {
+                // Use the message from the JSON data for the error
+                throw new Error(`Failed to fetch research analysis.`);
+            }
+
+            response = await response.json();
+            console.log("Full response from backend>>>", res);
+            //    Check the status on the 'response' object
 
             if (response && response.output_text) {
                 try {

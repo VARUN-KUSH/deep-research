@@ -1,21 +1,30 @@
 import { NextResponse } from 'next/server';
-
+import OpenAI from 'openai'; 
+import { zodTextFormat } from "openai/helpers/zod";
 // app/api/chat/route.js or pages/api/chat.js
+import { z } from "zod";
+
+const IndustryNames = z.object({
+    commonNames: z.array(z.string()),
+});
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+});
 
 export async function POST(req) {
-    // const prompt = await req.json();
+    const { industryPrompt } = await req.json();
+
+    const response = await openai.responses.create({
+        input: industryPrompt,
+        model: "gpt-5", // Changed to gpt-4o, often slightly better for detailed responses than latest if there are subtle differences in 'latest' deployment          
+        text: {
+            format: zodTextFormat(IndustryNames, "commonNames"),
+        }
+    });
+    console.log("Received response:", response);
     
-    // const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    //   method: "POST",
-    //   headers: {
-    //     "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify({ model: "gpt-4", messages: [{ role: "user", content: prompt }] }),
-    // });
-  
-    // const data = await response.json();
-    // return new NextResponse("Job processed successfully.", { status: 200 });;
+    return new NextResponse("Job processed successfully.", { status: 200 });;
 
 }
   
