@@ -1083,13 +1083,15 @@ const App = () => {
                 }),
             });
 
+            response = await response.json();
+            console.log("Full response from backend>>>", response);
+
             if (response.status !== 200) {
                 // Use the message from the JSON data for the error
                 throw new Error(`Failed to fetch research analysis.`);
             }
 
-            response = await response.json();
-            console.log("Full response from backend>>>", res);
+            
             //    Check the status on the 'response' object
 
             if (response && response.output_text) {
