@@ -950,7 +950,7 @@ const App = () => {
         setMessage('Sending deep research request to backend...');
 
         try {
-            const response = await fetch(`${process.env.NEXT_BACKEND_URL}/api/generate-report`, { // Replace with your actual Django backend endpoint
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/generate-report`, { // Replace with your actual Django backend endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
