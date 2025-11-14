@@ -727,7 +727,7 @@ const App = () => {
     // Removed 'query' state as the direct input field is being removed.
     const [selectedModelCompany, setSelectedModelCompany] = useState('ChatGPT'); // New state for selected model company
     const [availableModels, setAvailableModels] = useState([]); // New state for dynamically available models
-    const [selectedModels, setSelectedModels] = useState(["o3-deep-research"]); // Stores selected research models
+    const [selectedModels, setSelectedModels] = useState([]); // Stores selected research models
     const [recipientEmail, setRecipientEmail] = useState(''); // Stores the recipient email
     const [Industry_Name, setIndustry_Name] = useState('');
     const [promptRewritingEnabled, setPromptRewritingEnabled] = useState(false); // Controls prompt rewriting feature
@@ -909,8 +909,21 @@ const App = () => {
 
     // Effect to update available models when selectedModelCompany changes
     useEffect(() => {
-        setAvailableModels(modelOptions[selectedModelCompany] || []);
-        setSelectedModels([]); // Clear selected models when company changes
+        // setAvailableModels(modelOptions[selectedModelCompany] || []);
+        // setSelectedModels([]); // Clear selected models when company changes
+
+        const modelsForCompany = modelOptions[selectedModelCompany] || [];
+        setAvailableModels(modelsForCompany);
+
+        // This is the new logic:
+        // If the selected company is 'ChatGPT', set the default model.
+        if (selectedModelCompany === 'ChatGPT') {
+            setSelectedModels(['o3-deep-research']);
+        } else {
+            // Otherwise, clear the selection when the company changes.
+            setSelectedModels([]);
+        }
+
     }, [selectedModelCompany]); // Depend on selectedModelCompany
 
     // Function to handle changes in text input fields (email, industry name)
@@ -962,22 +975,40 @@ const App = () => {
             </div>
         );
       }
-      
+
+      // Define the list of all allowed domain suffixes
+const allowedDomains = [
+    '@accessholdings.com',
+    '@noahresearch.com',
+    '@noahresearch.org',
+    '@oasismarinas.com',
+    '@alliancemarine.co',
+    '@monumentmarinegroup.com',
+    '@cityhousebrands.com',
+    '@wagwaygroup.com',
+    '@pupspetclub.com',
+    '@pawville.com',
+    '@zeusfireandsecurity.com',
+    '@spotlessbrands.com',
+    '@kuvare.com',
+    '@playfly.com'
+];
+
     // Function to initiate the research process (either directly or after prompt rewriting)
     const initiateResearch = async (promptToUse) => {
 
-        // if (!recipientEmail || !recipientEmail.includes('@accessholdings.com')) {
-        //     // If validation fails, set the error message
-        //     setMessage("sorry, you are not allowed to run this process");
-
-        //     // Set a timer to clear the message after 2 seconds
-        //     setTimeout(() => {
-        //         setMessage(''); // Clear the message
-        //     }, 2000);
-
-        //     // Stop the function execution
-        //     return;
-        // }
+        if (!recipientEmail || !allowedDomains.some(domain => recipientEmail.includes(domain))) {
+            // If validation fails, set the error message
+            setMessage("sorry, you are not allowed to run this process");
+        
+            // Set a timer to clear the message after 2 seconds
+            setTimeout(() => {
+                setMessage(''); // Clear the message
+            }, 2000);
+        
+            // Stop the function execution
+            return;
+        }
 
         setIsLoadingResearch(true);
         setMessage('Sending deep research request to backend...');
