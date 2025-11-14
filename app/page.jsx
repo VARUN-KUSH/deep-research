@@ -685,6 +685,7 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import OpenAI from 'openai'; // Import OpenAI client for LLM calls
+import { useRouter } from 'next/navigation';
 
 /* import Image from 'next/image' // Removed Next.js Image component as it caused a build error. Replaced with standard <img> tag. */
 
@@ -726,7 +727,7 @@ const App = () => {
     // Removed 'query' state as the direct input field is being removed.
     const [selectedModelCompany, setSelectedModelCompany] = useState('ChatGPT'); // New state for selected model company
     const [availableModels, setAvailableModels] = useState([]); // New state for dynamically available models
-    const [selectedModels, setSelectedModels] = useState([]); // Stores selected research models
+    const [selectedModels, setSelectedModels] = useState(["o3-deep-research"]); // Stores selected research models
     const [recipientEmail, setRecipientEmail] = useState(''); // Stores the recipient email
     const [Industry_Name, setIndustry_Name] = useState('');
     const [promptRewritingEnabled, setPromptRewritingEnabled] = useState(false); // Controls prompt rewriting feature
@@ -744,10 +745,12 @@ const App = () => {
     const [message, setMessage] = useState(''); // Displays user feedback messages (success/error)
     const [reasoning, setReasoning] = useState([]); // Stores reasoning output if available
     const [webSearchCall, setWebSearchCall] = useState(null); // Stores web search call output if available
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     // --- NEW STATE for settings modal ---
     const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
 
+    const router = useRouter();
 
     // Define model options based on company
     const modelOptions = {
@@ -771,6 +774,7 @@ const App = () => {
         ],
     };
 
+    
     function advancedmodelsConfig() {
         return (
             //  This JSX will now appear inside the modal
@@ -883,6 +887,26 @@ const App = () => {
         setShowAdvancedConfig(prev => !prev);
     };
 
+    useEffect(() => {
+        // Check if the 'isLoggedIn' flag exists in sessionStorage
+        const loggedIn = sessionStorage.getItem('isLoggedIn');
+        
+        if (loggedIn !== 'true') {
+          // If not logged in, redirect to the login page
+          router.replace('/login');
+        } else {
+          // If logged in, allow the component to render
+          setIsAuthenticated(true);
+        }
+      }, [router]); // Re-run if router changes
+    
+      const handleLogout = () => {
+        sessionStorage.removeItem('isLoggedIn');
+        router.push('/login');
+      };
+    
+      
+
     // Effect to update available models when selectedModelCompany changes
     useEffect(() => {
         setAvailableModels(modelOptions[selectedModelCompany] || []);
@@ -930,6 +954,15 @@ const App = () => {
         setClarifyingQuestionsEnabled(e.target.checked);
     };
 
+    // While checking, show a loading message
+    if (!isAuthenticated) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <p>Loading...</p>
+            </div>
+        );
+      }
+      
     // Function to initiate the research process (either directly or after prompt rewriting)
     const initiateResearch = async (promptToUse) => {
 
