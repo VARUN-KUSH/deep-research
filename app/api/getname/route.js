@@ -24,7 +24,7 @@ export async function POST(req) {
     });
     console.log("Received response:", response);
     
-    return new NextResponse("Job processed successfully.", { status: 200 });;
+    return NextResponse.json(response, { status: 200 });
 
 }
   

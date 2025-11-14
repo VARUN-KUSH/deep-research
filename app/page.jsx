@@ -748,7 +748,7 @@ const App = () => {
     // --- NEW STATE for settings modal ---
     const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
 
-   
+
     // Define model options based on company
     const modelOptions = {
         '': [], // Default empty
@@ -933,24 +933,24 @@ const App = () => {
     // Function to initiate the research process (either directly or after prompt rewriting)
     const initiateResearch = async (promptToUse) => {
 
-        if (!recipientEmail || !recipientEmail.includes('@accessholdings.com')) {
-            // If validation fails, set the error message
-            setMessage("sorry, you are not allowed to run this process");
+        // if (!recipientEmail || !recipientEmail.includes('@accessholdings.com')) {
+        //     // If validation fails, set the error message
+        //     setMessage("sorry, you are not allowed to run this process");
 
-            // Set a timer to clear the message after 2 seconds
-            setTimeout(() => {
-                setMessage(''); // Clear the message
-            }, 2000);
+        //     // Set a timer to clear the message after 2 seconds
+        //     setTimeout(() => {
+        //         setMessage(''); // Clear the message
+        //     }, 2000);
 
-            // Stop the function execution
-            return;
-        }
+        //     // Stop the function execution
+        //     return;
+        // }
 
         setIsLoadingResearch(true);
         setMessage('Sending deep research request to backend...');
 
         try {
-            const response = await fetch(' https://10092bdb255b.ngrok-free.app/api/generate-report', { // Replace with your actual Django backend endpoint
+            const response = await fetch(`${process.env.NEXT_BACKEND_URL}/api/generate-report`, { // Replace with your actual Django backend endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1072,7 +1072,7 @@ const App = () => {
         try {
             const industryPrompt = `identify the most commonly accepted names for this ${industryName} industry.`;
 
-            let response = await fetch('/api/getname', { // Replace with your actual Django backend endpoint
+            let resp = await fetch('/api/getname', { // Replace with your actual Django backend endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1083,15 +1083,18 @@ const App = () => {
                 }),
             });
 
-            response = await response.json();
+            // if (!response.ok) {
+            //     // Get the error message from the backend's JSON response
+            //     const errorData = await response.json();
+            //     throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+            // }
+
+            const response = await resp.json();
             console.log("Full response from backend>>>", response);
 
-            if (response.status !== 200) {
-                // Use the message from the JSON data for the error
-                throw new Error(`Failed to fetch research analysis.`);
-            }
 
-            
+
+
             //    Check the status on the 'response' object
 
             if (response && response.output_text) {
