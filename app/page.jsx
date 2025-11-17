@@ -997,24 +997,24 @@ const allowedDomains = [
     // Function to initiate the research process (either directly or after prompt rewriting)
     const initiateResearch = async (promptToUse) => {
 
-        if (!recipientEmail || !allowedDomains.some(domain => recipientEmail.includes(domain))) {
-            // If validation fails, set the error message
-            setMessage("sorry, you are not allowed to run this process");
+        // if (!recipientEmail || !allowedDomains.some(domain => recipientEmail.includes(domain))) {
+        //     // If validation fails, set the error message
+        //     setMessage("sorry, you are not allowed to run this process");
         
-            // Set a timer to clear the message after 2 seconds
-            setTimeout(() => {
-                setMessage(''); // Clear the message
-            }, 2000);
+        //     // Set a timer to clear the message after 2 seconds
+        //     setTimeout(() => {
+        //         setMessage(''); // Clear the message
+        //     }, 2000);
         
-            // Stop the function execution
-            return;
-        }
+        //     // Stop the function execution
+        //     return;
+        // }
 
         setIsLoadingResearch(true);
         setMessage('Sending deep research request to backend...');
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/generate-report`, { // Replace with your actual Django backend endpoint
+            const response = await fetch(`http://localhost:3003/api/generate-report`, { // Replace with your actual Django backend endpoint
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

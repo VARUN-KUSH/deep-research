@@ -1,54 +1,64 @@
-"use client"; // This page must be a Client Component
+"use client"; 
 
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
-// --- Your Hardcoded Credentials ---
-// ! These are visible in the browser's source code
-const ADMIN_USERNAME = "deepresearch@123";
-const ADMIN_PASSWORD = "reportscreation@123";
-// ----------------------------------
 
 export default function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false); // Added loading state
     const router = useRouter();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setLoading(true);
 
-        if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-            // 1. Credentials are correct!
-            setError('');
+        try {
+            // Send credentials to backend
+            const res = await fetch('/api/auth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
 
-            // 2. Set a flag in sessionStorage
-            // This "remembers" the login just for this tab
-            sessionStorage.setItem('isLoggedIn', 'true');
+            const data = await res.json();
 
-            // 3. Route to the main tool page
-            router.push('/');
-        } else {
-            // Credentials are wrong
-            setError('Invalid username or password');
+            if (res.ok) {
+                // 1. Credentials verified by backend!
+                
+                // 2. Set a flag in sessionStorage
+                sessionStorage.setItem('isLoggedIn', 'true');
+
+                // 3. Route to the main tool page
+                router.push('/');
+            } else {
+                // Backend returned an error (401)
+                setError(data.error || 'Invalid credentials');
+            }
+        } catch (err) {
+            setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-                {/* <h2 className="text-2xl font-bold text-center text-gray-900">
-          Noah Research - Login
-        </h2> */}
-        <div className='flex justify-center mb-4'>
-        <img
-                    src="/icon.png"
-                    width="250"
-                    height="250"
-                    alt="NOAH Research Logo"
-                    onError={(e) => { e.currentTarget.src = 'https://placehold.co/250x250/e0e7ff/3730a3?text=NOAH'; }} // Fallback placeholder
-                />
-        </div>
+                
+                <div className='flex justify-center mb-4'>
+                    <img
+                        src="/icon.png"
+                        width="250"
+                        height="250"
+                        alt="NOAH Research Logo"
+                        onError={(e) => { e.currentTarget.src = 'https://placehold.co/250x250/e0e7ff/3730a3?text=NOAH'; }}
+                    />
+                </div>
                
                 <form className="space-y-6" onSubmit={handleSubmit}>
                     <div>
@@ -93,9 +103,10 @@ export default function LoginPage() {
                     <div>
                         <button
                             type="submit"
-                            className="w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            disabled={loading}
+                            className={`w-full px-4 py-2 font-medium text-white bg-blue-600 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'}`}
                         >
-                            Sign in
+                            {loading ? 'Signing in...' : 'Sign in'}
                         </button>
                     </div>
                 </form>
